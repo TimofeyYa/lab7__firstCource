@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <cctype>
 
+
 char allCity[1000][50];
 int cityCount = -1;
 char wordNow[50];
@@ -180,11 +181,13 @@ void controls(){
 
 int main(){
     printf("\033c");
-    system("chcp 1251");
-    setlocale(LC_ALL, "Rus");
+    setlocale(LC_ALL, "");
     readAllCity();
     printf("Добро пожаловать в игру 'Города России'!\n");
 
+    char a[]= "аб";
+    printf("%i", a[0] + a[1]);
+    printf("%i", a[2] + a[3]);
     controls();
 
 }
