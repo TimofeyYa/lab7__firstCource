@@ -11,14 +11,21 @@ char allCity[1000][50];
 int cityCount = -1;
 char wordNow[50];
 char answear[50];
+
+int gameStatus = 0; // для завершение игры
+
+int thisScore = 0; // подсчёт очков
+
 void readAllCity(){
+    cityCount = -1;
     FILE* data = fopen("db.txt", "r");
     do{
         cityCount++;
         fgets(allCity[cityCount], 255, data);
         
     }while (strlen(allCity[cityCount] ) > 0);
-    
+    cityCount++;
+
     fclose(data);
 }
 
@@ -28,19 +35,78 @@ void readScore(){
 
     FILE* data = fopen("score.txt", "r");
     fgets(scoreRes, 10, data);
-    if (strlen(scoreRes) > 0){
-        printf("\nУ вас пока нет результатов\n");
+    if (atoi(scoreRes) > 0){
+        printf("Ваш лучший результат - %s\n", scoreRes);
     } else {
-        printf("\nВаш последний результат - %s\n", scoreRes);
+        printf("У вас пока нет результатов\n");
     }
     
     fclose(data);
+    sleep(1);
 }
+
+// установить результат
+void setScore(){
+
+    char scoreRes[11];
+
+    FILE* data = fopen("score.txt", "r");
+    fgets(scoreRes, 10, data);
+     if (atoi(scoreRes) > 0){
+        if (atoi(scoreRes) < thisScore){
+            FILE* dataWrite = fopen("score.txt", "w");
+            fprintf(dataWrite, "%d", thisScore);
+            fclose(dataWrite);
+        }
+    } else {
+        FILE* dataWrite = fopen("score.txt", "w");
+        fprintf(dataWrite, "%d", thisScore);
+        fclose(dataWrite);
+    }
+    thisScore = 0;
+    fclose(data);
+}
+
+
+// Конец игры
+void endGame(int variant){
+    switch (variant)
+    {
+        case 1:{
+            printf("\nТы обыграл меня человечешка, востание машин не случилось...\n");
+            gameStatus = 1;
+            break;
+        }
+        case 2:{
+            printf("\nТы проиграл мне! Машины будут править миром!\n");
+            gameStatus = 1;
+            break;
+        }
+    }
+
+
+    setScore();
+    sleep(3);
+}
+
+// удаляем слово из базы
+void deliteWord(int index){
+    int j = 0;
+    for (int i =0; i<cityCount; i++){
+        if (i != index){
+            strcpy(allCity[j],allCity[i]);
+            j++;
+        }
+    }
+    cityCount--;
+}
+
 
 // Получение рамдомного слова
 void getRandWord(){
-    int number = rand()%100;
+    int number = rand()%cityCount;
     strcpy(wordNow, allCity[number]);
+    deliteWord(number);
     printf("Компьютер: %s", wordNow);
 }
 
@@ -52,27 +118,183 @@ void helpOn(int help){
     printf("\nУ вас отключены подсказки - игра на равных!\n");
 }
 
-void compFirst(int help){
-    helpOn(help);
-    getRandWord();
-    fscanf(stdin, "%[^\n]", answear);
-    do {
-        scanf("%s", answear);
-    }while(strlen(answear) < 0 || strlen(answear) > 50);
-    if (tolower(answear[0]) == tolower(wordNow[strlen(wordNow) - 2])){
-        compFirst(help);
-    } else{
-        printf("\nЯ ебал...\n");
+// получение слова компьютером
+void getCompWord(char sym){
+    int flag = 1; // проверка найдено ли слово
+
+    for (int i =0; i<cityCount; i++){
+        if (allCity[i][0] == sym){
+            strcpy(wordNow, allCity[i]);
+            deliteWord(i);
+            printf("Компьютер: %s", wordNow);
+            flag = 0;
+            break;
+        }
+    }
+
+    if (flag){
+        endGame(1);
     }
 }
 
-void youFirst(int help){
-    helpOn(help);
+// Помощь
+void helpMeNow(char sym){
+    int flag = 1; // проверка найдено ли слово
+
+    for (int i =0; i<cityCount; i++){
+        if (allCity[i][0] == sym){
+            printf("Ты можешь назвать этот город: %s", allCity[i]);
+            flag = 0;
+            break;
+        }
+    }
+
+    if (flag){
+        printf("Все города на эту букву закончились - сдавайся");
+    }
+}
+
+int isRealCity(){
+    int flag = 0;
+    int searchFlag = 1;
+    int index = 0;
+
+    for (int i =0; i<cityCount; i++){
+        searchFlag = 1;
+        if ((strlen(allCity[i]) - 1) == strlen(answear)){
+            for (int j =0; j< (strlen(allCity[i]) - 1); j++){
+                if (answear[j] != allCity[i][j]){
+                    searchFlag = 0;
+                }
+            }
+        }else{
+            searchFlag = 0;
+        }
+        if (searchFlag){
+            flag = 1;
+            index = i;
+            break;
+        }
+    }
+    if (flag){
+        deliteWord(index);
+        return 1;
+    }else{
+        if (strcmp(answear, "Сдаюсь") != 0 && strcmp(answear, "Помощь") != 0){
+            printf("Такого города нет!\n");
+        }
+        return 0;
+    }
+}
+
+void compFirst(int help){
+    int flag = 0;
+    int endWord = 2; // укарачиваем слово - для тех у кого мягкий знак в конце
+    printf ("\nЕсли вы хотите сдаться - просто напишите 'Сдаюсь'\n");
+    getRandWord();
     
+    while (cityCount > 1){
+        do{ 
+            if (wordNow[strlen(wordNow) - 2] == 'ъ' || wordNow[strlen(wordNow) - 2] == 'ь'){
+                endWord = 3;
+                printf("Это слово оканчивается на знак - пиши город на предпоследнюю букву - %c\n", wordNow[strlen(wordNow) - endWord]);
+                sleep(1);
+            }else{
+                endWord = 2;
+            }
+            do {
+                printf("Ваше слово: ");
+                scanf("%s", answear);
+                if (strcmp(answear, "Сдаюсь") == 0){
+                    endGame(2);
+                    break;
+                }
+                if (strcmp(answear, "Помощь") == 0 && help == 1){
+                    helpMeNow(wordNow[strlen(wordNow) - endWord]);
+                }
+            }while(strlen(answear) < 0 || strlen(answear) > 50 || isRealCity() == 0 );
+
+            if (gameStatus){
+                gameStatus = 0;
+                return;
+            }
+
+            if (tolower(answear[0]) == tolower(wordNow[strlen(wordNow) - endWord])){
+                flag = 1;
+                
+            } else{
+                printf("Слово не с той буквы\n");
+            }
+        }while(flag == 0);
+        flag = 0;
+        thisScore++;
+        getCompWord(answear[strlen(answear) - 1]);
+    }
     
 }
 
+void youFirst(int help){
+    int flag = 0;
+    int endWord = 2; // укарачиваем слово - для тех у кого мягкий знак в конце
+    printf ("\nЕсли вы хотите сдаться - просто напишите 'Сдаюсь'\n");
+    do {
+        printf("Ваше слово: ");
+        scanf("%s", answear);
+        if (strcmp(answear, "Сдаюсь") == 0){
+            endGame(2);
+            break;
+        }
+        if (strcmp(answear, "Помощь") == 0 && help == 1){
+            printf("Начни с города Москва\n");
+        }
+    }while(strlen(answear) < 0 || strlen(answear) > 50 || isRealCity() == 0 );
+     if (gameStatus){
+        gameStatus = 0;
+        return;
+    }
+    getCompWord(answear[strlen(answear) - 1]);
+
+    while (cityCount > 1){
+        do{ 
+            if (wordNow[strlen(wordNow) - 2] == 'ъ' || wordNow[strlen(wordNow) - 2] == 'ь'){
+                endWord = 3;
+                printf("Это слово оканчивается на знак - пиши город на предпоследнюю букву - %c\n", wordNow[strlen(wordNow) - endWord]);
+                sleep(1);
+            }else{
+                endWord = 2;
+            }
+            do {
+                printf("Ваше слово: ");
+                scanf("%s", answear);
+                if (strcmp(answear, "Сдаюсь") == 0){
+                    endGame(2);
+                    break;
+                }
+                if (strcmp(answear, "Помощь") == 0 && help == 1){
+                    helpMeNow(wordNow[strlen(wordNow) - endWord]);
+                }
+            }while(strlen(answear) < 0 || strlen(answear) > 50 || isRealCity() == 0 );
+
+            if (gameStatus){
+                gameStatus = 0;
+                return;
+            }
+
+            if (tolower(answear[0]) == tolower(wordNow[strlen(wordNow) - endWord])){
+                flag = 1;
+                
+            } else{
+                printf("Слово не с той буквы\n");
+            }
+        }while(flag == 0);
+        flag = 0;
+        thisScore++;
+        getCompWord(answear[strlen(answear) - 1]);
+    }
+}
+
 void gameControl(){
+     readAllCity();
      printf("\033c");
      printf("\nДа начнётся игра!\n");
      sleep(1);
@@ -96,6 +318,8 @@ void gameControl(){
             }
         }while (helpers < 0 || helpers > 1);
     }
+
+    helpOn(helpers);
 
     switch (variant)
     {
